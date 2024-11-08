@@ -9,16 +9,27 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "react": "19.0.0-rc-02c0e824-20241028",
-    "react-dom": "19.0.0-rc-02c0e824-20241028",
-    "next": "15.0.2"
+    "@stylistic/eslint-plugin-jsx": "^2.10.1",
+    "bootstrap": "^5.3.3",
+    "bootstrap-icons": "^1.11.3",
+    "buttplug": "^3.2.2",
+    "immer": "^10.1.1",
+    "next": "15.0.2",
+    "peerjs": "^1.5.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "swr": "^2.2.5",
+    "use-immer": "^0.10.0"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@stylistic/eslint-plugin": "^2.10.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "eslint": "^8",
-    "eslint-config-next": "15.0.2"
+    "@typescript-eslint/eslint-plugin": "^8.13.0",
+    "eslint": "^9.14.0",
+    "eslint-config-next": "15.0.2",
+    "sass": "^1.80.6",
+    "typescript": "^5"
   }
 }
