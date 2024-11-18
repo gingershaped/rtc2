@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { IntifaceConnectionState, useIntiface } from "./intiface";
+import { useIntiface } from "./intiface";
 import { DeviceCard } from "./device-card";
 import { enableMapSet } from "immer";
 import { usePeer } from "./peer";
