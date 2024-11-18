@@ -24,9 +24,9 @@ export default function Index() {
         setShowDisconnectedAlert(false);
     }
 
-    return <div className="container-lg mt-4">
-        <div className="row">
-            <div className="col-4 bg-body-secondary rounded-4 p-4">
+    return <div className="container-lg">
+        <div className="row gy-4">
+            <div className="col-lg-4 bg-body-secondary rounded-4 p-4">
                 <label htmlFor="intiface-address" className="form-label">Connect to Intiface Central</label>
                 <div className="input-group mb-3">
                     <input
@@ -78,7 +78,7 @@ export default function Index() {
                     ))}
                 </div>
             </div>
-            <div className="col-8 px-4">
+            <div className="col-lg-8 px-4">
                 <h1 className="d-flex">
                     <span>Partner Devices</span>
                     <button className="btn btn-danger ms-auto align-self-end" disabled>Stop all</button>

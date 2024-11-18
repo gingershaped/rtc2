@@ -6,7 +6,7 @@ import Link from "next/link";
 export default function RootLayout({ children }: { children: React.ReactNode } ) {
     return <html>
         <body data-bs-theme="dark">
-            <nav className="navbar bg-body-tertiary">
+            <nav className="navbar navbar-expand bg-body-tertiary">
                 <div className="container-lg">
                     <Link className="navbar-brand" href="/">rtc<sup>2</sup></Link>
                     <ul className="navbar-nav flex-grow-1">
@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode } )
                     </ul>
                 </div>
             </nav>
-            <main>{children}</main>
+            <main className="p-4">{children}</main>
         </body>
     </html>;
 }
