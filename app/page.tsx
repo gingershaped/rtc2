@@ -80,7 +80,11 @@ export default function Index() {
             <div className="col-lg-8 px-4">
                 <h1 className="d-flex">
                     <span>Partner Devices</span>
-                    <button className="btn btn-danger ms-auto align-self-end" disabled>Stop all</button>
+                    <button
+                        className="btn btn-danger ms-auto align-self-end"
+                        disabled={remoteDevices == null}
+                        onClick={() => dispatchRemoteDevices({ type: "stop-all" })}
+                    >Stop all</button>
                 </h1>
                 <hr></hr>
                 <div className="position-relative">

@@ -32,6 +32,9 @@ export const publicDeviceAction = z.discriminatedUnion("type", [
         motorIndex: z.number(),
         speed: z.number(),
     }),
+    z.object({
+        type: z.literal("stop-all"),
+    }),
 ]);
 
 export const deviceAction = z.discriminatedUnion("type", [
@@ -82,6 +85,12 @@ function deviceReducer(draft: Draft<Map<number, DeviceInfo>>, action: DeviceActi
         case "set-vibration": {
             const device = draft.get(action.index)!;
             device.vibrationSpeeds[action.motorIndex] = action.speed;
+            break;
+        }
+        case "stop-all": {
+            draft.forEach((device) => {
+                device.vibrationSpeeds.fill(0);
+            });
             break;
         }
     }

@@ -1,5 +1,5 @@
 "use client";
-import { DeviceInfo, PublicDeviceAction } from "./intiface";
+import { DeviceInfo } from "./intiface";
 
 type LocalDeviceCardProps = {
     device: DeviceInfo,
