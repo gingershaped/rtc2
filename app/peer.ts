@@ -104,7 +104,7 @@ export function usePeer(
     useEffect(() => {
         peerConnection?.send({
             type: "devices",
-            devices: [...localDevices.entries().filter(([, { controllable }]) => controllable)],
+            devices: [...localDevices.entries()].filter(([, { controllable }]) => controllable),
         });
     }, [peerConnection, localDevices]);
 
