@@ -5,6 +5,7 @@ import { IntifaceConnectionState, useIntiface } from "./intiface";
 import { DeviceCard } from "./device-card";
 import { enableMapSet } from "immer";
 import { usePeer } from "./peer";
+import { CopyButton } from "./CopyButton";
 
 enableMapSet();
 
@@ -60,9 +61,7 @@ export default function Index() {
                                 <span className="visually-hidden">Loading...</span>
                             </div>
                         </div>}
-                        <button className="btn btn-primary">
-                            <i className="bi bi-clipboard"></i>
-                        </button>
+                        <CopyButton title="Copy URL" generate={() => peerUrl?.toString() ?? ""} />
                     </div>
                 </div>
                 <hr />
