@@ -1,16 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { ConnectionState, useIntiface } from "./intiface";
-import { LocalDeviceCard } from "./local-device";
+import { IntifaceConnectionState, useIntiface } from "./intiface";
+import { DeviceCard } from "./device-card";
 import { enableMapSet } from "immer";
+import { usePeer } from "./peer";
 
 enableMapSet();
 
 export default function Index() {
-    const { connectionState, connect, devices, dispatchDevices } = useIntiface();
+    const [showDisconnectedAlert, setShowDisconnectedAlert] = useState(false);
+    const { connectionState: intifaceConnectionState, connect, devices: localDevices, dispatchDevices } = useIntiface();
+    const { connectionState: peerConnectionState, remoteDevices, dispatchRemoteDevices, retryConnection } = usePeer(
+        localDevices, dispatchDevices, globalThis?.window?.location?.hash?.length ? window.location.hash.substring(1) : null, () => setShowDisconnectedAlert(true),
+    );
+    const peerUrl = peerConnectionState.state == "connected" ? new URL(window.location.toString()) : null;
+    if (peerUrl != null) {
+        peerUrl.hash = peerConnectionState.state == "connected" ? peerConnectionState.id : "";
+    }
     const [intifaceUrl, setIntifaceUrl] = useState("ws://localhost:12345");
 
+    if (remoteDevices != null && showDisconnectedAlert) {
+        setShowDisconnectedAlert(false);
+    }
 
     return <div className="container-lg mt-4">
         <div className="row">
@@ -26,17 +38,28 @@ export default function Index() {
                         onChange={(e) => setIntifaceUrl(e.currentTarget.value)}
                     />
                     <button
-                        className={`btn ${connectionState == ConnectionState.Connected ? "btn-danger": "btn-success"}`}
-                        disabled={connectionState == ConnectionState.Connecting}
-                        onClick={() => connect(connectionState == ConnectionState.Connected ? null : intifaceUrl)}
+                        className={`btn ${intifaceConnectionState.state == "connected" ? "btn-danger": "btn-success"}`}
+                        disabled={intifaceConnectionState.state == "connecting"}
+                        onClick={() => connect(intifaceConnectionState.state == "connected" ? null : intifaceUrl)}
                     >
-                        {connectionState == ConnectionState.Connected ? "Disconnect" : "Connect"}
+                        {intifaceConnectionState.state == "connected" ? "Disconnect" : "Connect"}
                     </button>
                 </div>
                 <div>
                     <label htmlFor="pair-link" className="form-label">Use this link to pair:</label>
-                    <div className="input-group">
-                        <input type="text" id="pair-link" className="form-control font-monospace" readOnly />
+                    <div className="input-group position-relative">
+                        <input
+                            type="text"
+                            id="pair-link"
+                            className="form-control font-monospace"
+                            readOnly
+                            value={peerUrl?.toString() ?? ""}
+                        />
+                        {peerConnectionState.state == "connecting" && <div className="position-absolute top-50 start-50 translate-middle">
+                            <div className="spinner-border spinner-border-sm text-secondary-emphasis" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                            </div>
+                        </div>}
                         <button className="btn btn-primary">
                             <i className="bi bi-clipboard"></i>
                         </button>
@@ -44,23 +67,55 @@ export default function Index() {
                 </div>
                 <hr />
                 <div className="vstack">
-                    {devices.size == 0 && <div className="text-secondary-emphasis w-100 text-center">No local devices</div>}
-                    {[...devices.entries()].map(([index, device]) => <LocalDeviceCard key={index} device={device} dispatchDevices={dispatchDevices} />)}
+                    {localDevices.size == 0 && <div className="text-secondary-emphasis w-100 text-center">No local devices</div>}
+                    {[...localDevices.entries()].map(([index, device]) => (
+                        <DeviceCard
+                            key={index}
+                            device={device}
+                            setControllable={(controllable) => dispatchDevices({ type: "set-controllable", index: device.index, controllable })}
+                            setVibration={(motorIndex, speed) => dispatchDevices({ type: "set-vibration", index: device.index, motorIndex, speed })}
+                        />
+                    ))}
                 </div>
             </div>
             <div className="col-8 px-4">
                 <h1 className="d-flex">
-                    <span>Devices</span>
+                    <span>Partner Devices</span>
                     <button className="btn btn-danger ms-auto align-self-end" disabled>Stop all</button>
                 </h1>
                 <hr></hr>
                 <div className="position-relative">
-                    <div className="position-absolute top-50 start-50 translate-middle mt-4 text-secondary d-flex align-items-center">
-                        <div className="spinner-border spinner-border-sm" role="status">
-                            <span className="visually-hidden">Loading...</span>
+                    {showDisconnectedAlert && <div className="alert alert-warning alert-dismissible" role="alert">
+                        <span>Peer has disconnected.</span>
+                        <button type="button" className="btn-close" aria-label="Close" onClick={() => setShowDisconnectedAlert(false)}></button>
+                    </div>}
+                    {peerConnectionState.state == "errored" && <div className="alert alert-danger d-flex align-items-baseline" role="alert">
+                        <span>{peerConnectionState.message} (<code>{peerConnectionState.error}</code>)</span>
+                        {["network", "server-error", "socket-error", "socket-closed", "unavailable-id"].includes(peerConnectionState.error) && (
+                            <button className="btn btn-danger btn-sm ms-auto" onClick={retryConnection}>Reconnect</button>
+                        )}
+                    </div>}
+                    {(remoteDevices == null && peerConnectionState.state != "errored" && !showDisconnectedAlert) && (
+                        <div className="position-absolute top-50 start-50 translate-middle mt-4 text-secondary d-flex align-items-center">
+                            <div className="spinner-border spinner-border-sm" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <span className="ms-2">Waiting for peer connection</span>
                         </div>
-                        <span className="ms-2">Waiting for peer connection</span>
-                    </div>
+                    )}
+                    {(remoteDevices != null && remoteDevices.size == 0) && (
+                        <div className="position-absolute top-50 start-50 translate-middle mt-4 d-flex align-items-center">
+                            <span className="text-success">Connected!&nbsp;</span><span className="text-secondary">No remote devices.</span>
+                        </div>
+                    )}
+                    {[...remoteDevices?.entries() ?? []].map(([index, device]) => (
+                        <DeviceCard
+                            key={index}
+                            device={device}
+                            setControllable={null}
+                            setVibration={(motorIndex, speed) => dispatchRemoteDevices({ type: "set-vibration", index: device.index, motorIndex, speed })}
+                        />
+                    ))}
                 </div>
             </div>
         </div>

@@ -1,46 +1,65 @@
-import { ButtplugBrowserWebsocketClientConnector, ButtplugClient, ButtplugClientDevice, MessageAttributes } from "buttplug";
+import { ActuatorType, ButtplugBrowserWebsocketClientConnector, ButtplugClient, ButtplugClientDevice } from "buttplug";
 import { Draft } from "immer";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useImmerReducer } from "use-immer";
+import { z } from "zod";
 
-export const enum ConnectionState {
-    Disconnected, Connecting, Connected,
-}
 
-export type DeviceInfo = {
-    index: number,
-    name: string,
-    displayName: string | null,
-    attributes: MessageAttributes,
-    vibrationSpeeds: number[],
-    controllable: boolean,
-};
+export const genericDeviceMessageAttributesSchema = z.object({
+    FeatureDescriptor: z.string(),
+    ActuatorType: z.nativeEnum(ActuatorType),
+    StepCount: z.number(),
+    Index: z.number(),
+});
 
-export type PublicDeviceAction = (
-    {
-        type: "set-controllable",
-        index: number,
-        controllable: boolean,
-    } | {
-        type: "set-vibration",
-        index: number,
-        motorIndex: number,
-        speed: number,
-    }
-);
+export const deviceInfo = z.object({
+    index: z.number(),
+    name: z.string(),
+    displayName: z.string().nullable(),
+    attributes: z.object({
+        scalar: z.array(genericDeviceMessageAttributesSchema),
+        linear: z.array(genericDeviceMessageAttributesSchema),
+        rotational: z.array(genericDeviceMessageAttributesSchema),
+    }),
+    vibrationSpeeds: z.array(z.number()),
+    controllable: z.boolean(),
+});
 
-export type DeviceAction = (
-    {
-        type: "add-device",
-        index: number,
-        info: DeviceInfo,
-    } | {
-        type: "remove-device",
-        index: number,
-    } | {
-        type: "clear-devices",
-    } | PublicDeviceAction
-);
+export const publicDeviceAction = z.discriminatedUnion("type", [
+    z.object({
+        type: z.literal("set-vibration"),
+        index: z.number(),
+        motorIndex: z.number(),
+        speed: z.number(),
+    }),
+]);
+
+export const deviceAction = z.discriminatedUnion("type", [
+    ...publicDeviceAction.options,
+    z.object({
+        type: z.literal("set-controllable"),
+        index: z.number(),
+        controllable: z.boolean(),
+    }),
+    z.object({
+        type: z.literal("add-device"),
+        index: z.number(),
+        info: deviceInfo,
+    }),
+    z.object({
+        type: z.literal("remove-device"),
+        index: z.number(),
+    }),
+    z.object({
+        type: z.literal("clear-devices"),
+    }),
+]);
+
+export type DeviceInfo = z.infer<typeof deviceInfo>;
+export type PublicDeviceAction = z.infer<typeof publicDeviceAction>;
+export type DeviceAction = z.infer<typeof deviceAction>;
+
+export type IntifaceConnectionState = { state: "connected" | "connecting" } | { state: "disconnected", error: string | null };
 
 function deviceReducer(draft: Draft<Map<number, DeviceInfo>>, action: DeviceAction) {
     switch (action.type) {
@@ -63,15 +82,15 @@ function deviceReducer(draft: Draft<Map<number, DeviceInfo>>, action: DeviceActi
         case "set-vibration": {
             const device = draft.get(action.index)!;
             device.vibrationSpeeds[action.motorIndex] = action.speed;
-            
             break;
         }
     }
 }
 
+
 export function useIntiface() {
     const client = useMemo(() => new ButtplugClient("rtc2"), []);
-    const [connectionState, setConnectionState] = useState(ConnectionState.Disconnected);
+    const [connectionState, setConnectionState] = useState<IntifaceConnectionState>({ state: "disconnected", error: null });
     const [devices, dispatchDevices] = useImmerReducer(deviceReducer, new Map<number, DeviceInfo>());
 
     const deviceAdded = useCallback((device: ButtplugClientDevice) => {
@@ -82,9 +101,13 @@ export function useIntiface() {
                 name: device.name,
                 index: device.index,
                 displayName: device.displayName ?? null,
-                attributes: device.messageAttributes,
+                attributes: {
+                    linear: device.messageAttributes.LinearCmd?.map(attribute => genericDeviceMessageAttributesSchema.parse(attribute)) ?? [],
+                    scalar: device.messageAttributes.ScalarCmd?.map(attribute => genericDeviceMessageAttributesSchema.parse(attribute)) ?? [],
+                    rotational: device.messageAttributes.RotateCmd?.map(attribute => genericDeviceMessageAttributesSchema.parse(attribute)) ?? [],
+                },
                 vibrationSpeeds: Array(device.vibrateAttributes.length).fill(0),
-                controllable: false,
+                controllable: true,
             },
         });
     }, [dispatchDevices]);
@@ -98,7 +121,7 @@ export function useIntiface() {
     }, [dispatchDevices]);
     const disconnected = useCallback(() => {
         dispatchDevices({ type: "clear-devices" });
-        setConnectionState(ConnectionState.Disconnected);
+        setConnectionState({ state: "disconnected", error: null });
     }, [dispatchDevices]);
 
     useEffect(() => {
@@ -115,7 +138,10 @@ export function useIntiface() {
     useEffect(() => {
         if (client.connected) {
             for (const device of client.devices) {
-                const deviceInfo = devices.get(device.index)!;
+                const deviceInfo = devices.get(device.index);
+                if (deviceInfo == null) {
+                    continue;
+                }
                 device.vibrate(deviceInfo.vibrationSpeeds);
             }
         }
@@ -123,23 +149,35 @@ export function useIntiface() {
 
     const connect = useCallback(async(url: string | null) => {
         if (url != null) {
-            setConnectionState(ConnectionState.Connecting);
+            if (connectionState.state != "disconnected") {
+                throw new Error("Tried to connect while already connected");
+            }
+            setConnectionState({ state: "connecting" });
             try {
                 await client.connect(new ButtplugBrowserWebsocketClientConnector(url));
                 await client.startScanning();
             } catch (e) {
                 console.warn(`Failed to connect to ${url}!`, e);
-                setConnectionState(ConnectionState.Disconnected);
+                setConnectionState({ state: "disconnected", error: "Connection failed!" });
                 return;
             }
-            setConnectionState(ConnectionState.Connected);
+            setConnectionState({ state: "connected" });
             for (const device of client.devices) {
                 deviceAdded(device);
             }
         } else {
-            await client.disconnect();
+            if (connectionState.state != "connected") {
+                throw new Error("Tried to disconnect while not connected");
+            }
+            dispatchDevices({ type: "clear-devices" });
+            setConnectionState({ state: "disconnected", error: null });
+            try {
+                await client.disconnect();
+            } catch (e) {
+                console.warn("An error occured while disconnecting!", e);
+            }
         }
-    }, [client, deviceAdded]);
+    }, [client, connectionState, deviceAdded, dispatchDevices]);
 
-    return { connectionState, connect, devices, dispatchDevices: (action: PublicDeviceAction) => dispatchDevices(action) };
+    return { connectionState, connect, devices, dispatchDevices };
 }
