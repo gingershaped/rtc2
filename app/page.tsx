@@ -49,10 +49,12 @@ export default function Index() {
                 <div>
                     <label htmlFor="pair-link" className="form-label">Use this link to pair:</label>
                     <div className="input-group position-relative">
-                        <input
-                            type="text"
+                        <textarea
+                            // type="text"
                             id="pair-link"
-                            className="form-control font-monospace"
+                            rows={1}
+                            style={{ resize: "none", overflowWrap: "normal", whiteSpace: "pre", clipPath: "border-box", scrollbarWidth: "thin" }}
+                            className="form-control font-monospace overflow-y-clip overflow-x-scroll"
                             readOnly
                             value={peerUrl?.toString() ?? ""}
                         />
