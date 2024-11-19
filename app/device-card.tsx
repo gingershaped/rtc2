@@ -10,7 +10,7 @@ type LocalDeviceCardProps = {
 export function DeviceCard({ device, setVibration, setControllable }: LocalDeviceCardProps) {
     const hasDisplayName = device.displayName !== undefined && device.displayName != "";
 
-    return <div className="card">
+    return <div className="card mb-2">
         <div className="card-body">
             <h5 className="card-title">{hasDisplayName ? device.displayName : device.name}</h5>
             {hasDisplayName && <h6 className="card-subtitle mb-2 text-body-secondary">{device.name}</h6>}

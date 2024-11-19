@@ -27,7 +27,7 @@ export default function Index() {
 
     return <div className="container-lg">
         <div className="row gy-4">
-            <div className="col-lg-4 bg-body-secondary rounded-4 p-4">
+            <div className="col-lg-4 bg-body-secondary rounded-4 p-4 pb-2">
                 <label htmlFor="intiface-address" className="form-label">Connect to Intiface Central</label>
                 <div className="input-group mb-3">
                     <input
