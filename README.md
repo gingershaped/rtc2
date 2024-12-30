@@ -1,1 +1,1 @@
-A tiny tool for two-way remote control of [buttplug.io](https://buttplug.io)-compatible toys over WebRTC. [Use it here!](https://ginger-shaped.github.io/rtc2/)
+A tiny tool for two-way remote control of [buttplug.io](https://buttplug.io)-compatible toys over WebRTC. [Use it here!](https://gingershaped.github.io/rtc2/)
